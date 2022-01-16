@@ -1,37 +1,23 @@
 import numpy as np
 import os
-
 import time
-
 import local_packages.tools3d_ as t3d 
-
-
 from scipy.optimize import lsq_linear
 from IPython.display import clear_output
-
 from scipy.sparse import csr_matrix
 import scipy.sparse as sp
 from scipy.sparse.linalg import spsolve
 from qpsolvers import solve_qp
-
-import pickle
-
 import numba
 from numba import jit
-
-#import numba_scipy  # not clear hoe to use
-
 from numba.core.extending import overload
 from numba.np.linalg import norm_impl
-
 from numba.core.errors import NumbaDeprecationWarning, NumbaPendingDeprecationWarning, NumbaPerformanceWarning
 import warnings
 warnings.simplefilter('ignore', category=NumbaDeprecationWarning)
 warnings.simplefilter('ignore', category=NumbaPendingDeprecationWarning)
 warnings.simplefilter('ignore', category=NumbaPerformanceWarning)
-
 from tqdm import tqdm
-
 
 
 
@@ -100,8 +86,7 @@ def blend_shape_weights(A_0, B_0, A_BS_model, S_training_poses):
         Alpha_star[i, :] = weights_temp.x.reshape(1, n)
     
     return Alpha_star
-    # make small blend shape weights 0    
-    #Alpha_star[Alpha_star<0.1] = 0
+
 
     print ("done in ",(time.time() - start_time), "sec")      
 
@@ -269,47 +254,3 @@ def recon(M_B, A_sparse_recon, n_vertices, num_triangles, i):
 
 
 
-def main():
-    A_BS_model, B_BS_model, A_0, Zero_def_indices, temp_faces_A_0 = reading_generic_bs('Generic_BS_Facescape/')
-    B_0, S_training_poses = reading_training_data(temp_faces_A_0)
-    Alpha_star = blend_shape_weights(A_0, B_0, A_BS_model, S_training_poses)
-
-    # definitions and make the data into columns
-    n_vertices = A_0.shape[1]
-    A_0 = A_0.T
-    B_0 = B_0.T
-    tri = temp_faces_A_0.T
-    
-    A_BS_model = columnise(A_BS_model)
-    S_training_poses = columnise(S_training_poses)    
-    
-    n_iterations = 3    
-    distribution = np.flip(np.logspace(0.1, 1, n_iterations, endpoint=True))
-    beta = tools_3d.normalise (distribution, 0.002, 0.4)
-    gamma = tools_3d.normalise (distribution, 80, 1000)
-    Alpha_optimum = Alpha_star.copy()
-
-    print ("Calculating M_A_star_f", end='')
-    start_temp = time.time()
-    M_A_star_f = make_M_A_star_fast(tri, A_0, B_0, A_BS_model)
-    print ("...done in ",(time.time() - start_temp), "sec") 
-
-    print ("Calculating W_seed_f", end='')
-    start_temp = time.time()
-    kappa = 0.1
-    theta = 2
-    W_seed_f = make_W_seed_fast(tri, A_BS_model, kappa, theta)
-    print ("...done in ",(time.time() - start_temp), "sec") 
-
-    print ("Calculating M_S_minus_M_B_0_f", end='')
-    start_temp = time.time()
-    M_S_minus_M_B_0_f, M_B_0_f, M_S_f = make_M_S_minus_M_B_0_fast(S_training_poses, B_0, tri)
-    print ("...done in ",(time.time() - start_temp), "sec") 
-
-    print ("Calculating A_sparse_recon", end='')
-    start_temp = time.time()
-    A_sparse_recon = make_A_sparse_reconstruction(tri, n_vertices)
-    print ("...A_sparse_recon done in ",(time.time() - start_temp), "sec") 
-
-if __name__ == '__main__':
-    main()
